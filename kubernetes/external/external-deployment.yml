@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: kubedemo
-        image: anldisr/kubedemo:0.0.1
+        image: anldisr/kubedemo:0.0.3
         ports:
           - containerPort: 8090
             protocol: TCP
