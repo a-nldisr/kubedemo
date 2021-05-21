@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: kubedemo
+  name: kubedemo
+  namespace: test
+spec:
+  endpoints:
+  - interval: 60s
+    path: /metrics
+    scrapeTimeout: 30s
+    targetPort: 8090
+  jobLabel: kubedemo
+  namespaceSelector:
+    matchNames:
+    - test
+  selector:
+    matchLabels:
+      app: kubedemo
