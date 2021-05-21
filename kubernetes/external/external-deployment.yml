@@ -30,7 +30,7 @@ spec:
             cpu: "0.2"
             memory: 64mi
         env:
-          - name: SEALED_SECRET
+          - name: SECRET
             valueFrom:
               secretKeyRef:
                 key: super-secret
