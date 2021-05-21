@@ -17,8 +17,23 @@ spec:
     spec:
       containers:
       - name: kubedemo
-        image: anldisr/kubedemo:0.0.1
+        image: anldisr/kubedemo:0.0.3
         ports:
           - containerPort: 8090
             protocol: TCP
             name: kubedemo
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: 128mi
+          requests:
+            cpu: "0.2"
+            memory: 64mi
+        env:
+          - name: SECRET
+            valueFrom:
+              secretKeyRef:
+                key: super-secret
+                name: sealed-secret
+          - name: FOO
+            value: BAR
