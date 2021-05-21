@@ -6,7 +6,7 @@ metadata:
   name: kubedemo
   namespace: test
   labels:
-    run: kubedemo
+    app: kubedemo
 spec:
   ports:
   - port: 8090
