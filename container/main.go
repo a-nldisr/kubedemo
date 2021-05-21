@@ -17,22 +17,9 @@ import (
 var someRandomMetric = prometheus.NewGauge(prometheus.GaugeOpts{
 	Name: "some_random_metric", Help: "A random static metric in your Kubernetes to play with"})
 
-func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Hello function")
-
-	fmt.Fprintf(w, "Hi Vandebron\n")
-	fmt.Fprintf(w, "Our sealed secret is: "+os.Getenv("SECRET"))
-	fmt.Fprintf(w, "\nOur enviroment variable is: "+os.Getenv("FOO"))
-}
-
-func headers(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("headers function")
-
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			fmt.Fprintf(w, "%v: %v\n", name, h)
-		}
-	}
+type application struct {
+	readinessFailure bool
+	livenessFailure  bool
 }
 
 func randomChannel(c chan bool) {
@@ -55,7 +42,7 @@ func randomChannel(c chan bool) {
 			max := 10
 			num := float64(rand.Intn(max-min) + min)
 			s := fmt.Sprintf("%f", num)
-			fmt.Println("Generated random numer: " + string(s))
+			fmt.Println("Generated random number: " + string(s))
 
 			someRandomMetric.Set(num)
 		}
@@ -70,7 +57,7 @@ func init() {
 
 func main() {
 
-	fmt.Println("Version 0.0.3")
+	fmt.Println("Version 0.0.4")
 
 	port := ":8090"
 
@@ -81,7 +68,9 @@ func main() {
 		IdleTimeout:  15 * time.Second,
 	}
 
-	fmt.Println("Starting server")
+	app := &application{}
+
+	fmt.Printf("Starting server on %v\n", port)
 
 	// Creating the channel in a go routine to ensure the timer runs concurrently in the background
 	notificationChannel := make(chan bool)
@@ -114,8 +103,13 @@ func main() {
 	}()
 
 	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/", hello)
-	http.HandleFunc("/headers", headers)
+	http.HandleFunc("/", app.hello)
+	http.HandleFunc("/headers", app.headers)
+	http.HandleFunc("/livez", app.livez)
+	http.HandleFunc("/readyz", app.readyz)
+	http.HandleFunc("/config/livezfailure", app.livezFailure)
+	http.HandleFunc("/config/readyzfailure", app.readyzFailure)
+
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Could not listen on %s: %v\n", port, err)
 	} // Block till server is closed, send notification after
