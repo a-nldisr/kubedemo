@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubedemo
+  namespace: test
+  labels:
+    app: kubedemo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubedemo
+  template:
+    metadata:
+      labels:
+        app: kubedemo
+    spec:
+      containers:
+      - name: kubedemo
+        image: anldisr/kubedemo:0.0.1
+        ports:
+          - containerPort: 8090
+            protocol: TCP
+            name: kubedemo
