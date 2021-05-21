@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var someRandomMetric = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -20,10 +19,13 @@ var someRandomMetric = prometheus.NewGauge(prometheus.GaugeOpts{
 type application struct {
 	readinessFailure bool
 	livenessFailure  bool
+	infoLog          *log.Logger
+	errorLog         *log.Logger
+	debugLog         *log.Logger
 }
 
-func randomChannel(c chan bool) {
-	fmt.Println("Starting time based random metric generator")
+func (app *application) randomChannel(c chan bool) {
+	app.infoLog.Println("Starting time based random metric generator")
 
 	// Time in seconds
 	pollInterval := 10
@@ -34,15 +36,15 @@ func randomChannel(c chan bool) {
 		select {
 		// when shutdown is received we break
 		case <-c:
-			fmt.Println("Received shutdown, stopping timer")
+			app.infoLog.Println("Received shutdown, stopping timer")
 			break
 		default:
-			fmt.Println("Generating number... ")
+			app.debugLog.Println("Generating number... ")
 			min := 0
 			max := 10
 			num := float64(rand.Intn(max-min) + min)
 			s := fmt.Sprintf("%f", num)
-			fmt.Println("Generated random number: " + string(s))
+			app.debugLog.Println("Generated random number: " + string(s))
 
 			someRandomMetric.Set(num)
 		}
@@ -56,25 +58,36 @@ func init() {
 }
 
 func main() {
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime|log.Lshortfile)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	debugLog := log.New(os.Stdout, "DEBUG\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	fmt.Println("Version 0.0.4")
+	app := &application{
+		readinessFailure: false,
+		livenessFailure:  false,
+		infoLog:          infoLog,
+		errorLog:         errorLog,
+		debugLog:         debugLog,
+	}
+
+	app.infoLog.Println("Version 0.0.4")
 
 	port := ":8090"
 
 	server := &http.Server{
 		Addr:         port,
+		ErrorLog:     app.errorLog,
+		Handler:      app.routes(),
+		IdleTimeout:  15 * time.Second,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  15 * time.Second,
 	}
 
-	app := &application{}
-
-	fmt.Printf("Starting server on %v\n", port)
+	app.infoLog.Printf("Starting server on %v\n", port)
 
 	// Creating the channel in a go routine to ensure the timer runs concurrently in the background
 	notificationChannel := make(chan bool)
-	go randomChannel(notificationChannel)
+	go app.randomChannel(notificationChannel)
 
 	// Setting clean shutdown mechanisms
 	done := make(chan bool)
@@ -87,7 +100,7 @@ func main() {
 		// Send notification to close the time loop in childChan
 		notificationChannel <- true
 		// Notifying the server shutdown is received.
-		fmt.Println("Server is shutting down.")
+		app.infoLog.Println("Server is shutting down.")
 
 		// Setting up context group
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -95,25 +108,17 @@ func main() {
 
 		server.SetKeepAlivesEnabled(false)
 		if err := server.Shutdown(ctx); err != nil {
-			log.Fatalf("Could not gracefully shutdown the server: %v\n", err)
+			app.errorLog.Fatalf("Could not gracefully shutdown the server: %v\n", err)
 		}
 
 		// Closing channel
 		close(done)
 	}()
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/", app.hello)
-	http.HandleFunc("/headers", app.headers)
-	http.HandleFunc("/livez", app.livez)
-	http.HandleFunc("/readyz", app.readyz)
-	http.HandleFunc("/config/livezfailure", app.livezFailure)
-	http.HandleFunc("/config/readyzfailure", app.readyzFailure)
-
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Could not listen on %s: %v\n", port, err)
+		app.errorLog.Fatalf("Could not listen on %s: %v\n", port, err)
 	} // Block till server is closed, send notification after
 	<-done
-	fmt.Println("Server stopped")
+	app.infoLog.Println("Server stopped")
 
 }

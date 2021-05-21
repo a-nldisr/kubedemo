@@ -7,8 +7,6 @@ import (
 )
 
 func (app *application) hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Hello function")
-
 	fmt.Fprintf(w, "Hi Vandebron\n")
 	fmt.Fprintf(w, "Our sealed secret is: "+os.Getenv("SECRET"))
 	fmt.Fprintf(w, "\nOur enviroment variable is: "+os.Getenv("FOO"))
@@ -32,6 +30,17 @@ func (app *application) livezFailure(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintln(w, "Method Not Allowed")
 	}
 	app.livenessFailure = !app.livenessFailure
+
+	var msg string
+
+	if app.livenessFailure {
+		msg = "enabled failure into /livez endpoint"
+	} else {
+		msg = "disabled failure mode for /livez endpoint"
+	}
+
+	app.debugLog.Println(msg)
+	fmt.Fprintln(w, msg)
 }
 
 func (app *application) readyz(w http.ResponseWriter, req *http.Request) {
@@ -52,11 +61,20 @@ func (app *application) readyzFailure(w http.ResponseWriter, req *http.Request) 
 		fmt.Fprintln(w, "Method Not Allowed")
 	}
 	app.readinessFailure = !app.readinessFailure
+
+	var msg string
+
+	if app.readinessFailure {
+		msg = "enabled failure into /readyz endpoint"
+	} else {
+		msg = "disabled failure mode for /readyz endpoint"
+	}
+
+	app.debugLog.Println(msg)
+	fmt.Fprintln(w, msg)
 }
 
 func (app *application) headers(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("headers function")
-
 	for name, headers := range req.Header {
 		for _, h := range headers {
 			fmt.Fprintf(w, "%v: %v\n", name, h)
