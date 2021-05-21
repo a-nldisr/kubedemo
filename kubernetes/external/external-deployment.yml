@@ -22,3 +22,6 @@ spec:
           - containerPort: 8090
             protocol: TCP
             name: kubedemo
+        env:
+          - name: FOO
+            value: BAR
