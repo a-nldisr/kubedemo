@@ -1,0 +1,16 @@
+---
+# With this you create a Service, needed to create an ingressroute.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubedemo
+  namespace: test
+  labels:
+    app: kubedemo
+spec:
+  ports:
+  - port: 8090
+    protocol: TCP
+# Selector is needed to configure an ENDPOINT, without a selector you need to manually create an ENDPOINT
+  selector:
+    app: kubedemo

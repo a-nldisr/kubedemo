@@ -1,0 +1,20 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubedemo-ingress-http
+  namespace: test
+  labels:
+    app: kubedemo
+spec:
+  entryPoints:
+  - web
+  routes:
+  - kind: Rule
+    match: Host(`kubedemo.play-backend.zonnecollectief.nl`)
+    services:
+    - kind: Service
+      name: kubedemo
+      port: 8090
+    middlewares:
+      - name: traefik-https-redirect@kubernetescrd
+      - name: traefik-office-whitelist@kubernetescrd
