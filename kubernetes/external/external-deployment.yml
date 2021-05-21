@@ -25,10 +25,10 @@ spec:
         resources:
           limits:
             cpu: "0.5"
-            memory: 128mi
+            memory: 128Mi
           requests:
             cpu: "0.2"
-            memory: 64mi
+            memory: 64Mi
         env:
           - name: SECRET
             valueFrom:
