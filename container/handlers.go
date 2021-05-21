@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func (app *application) hello(w http.ResponseWriter, req *http.Request) {
@@ -80,4 +82,25 @@ func (app *application) headers(w http.ResponseWriter, req *http.Request) {
 			fmt.Fprintf(w, "%v: %v\n", name, h)
 		}
 	}
+}
+
+func (app *application) factorial(w http.ResponseWriter, req *http.Request) {
+	var num int64 = 50000
+
+	s := req.FormValue("number")
+	if s != "" {
+		n, err := strconv.Atoi(s)
+		if err == nil && n > 0 {
+			num = int64(n)
+		} else {
+			status := http.StatusBadRequest
+			w.WriteHeader(status)
+			fmt.Fprintln(w, status, http.StatusText(status))
+			fmt.Fprintf(w, "Only numbers > 0 are accepted")
+			return
+		}
+	}
+
+	_ = app.getFactorial(big.NewInt(num))
+	fmt.Fprintf(w, "Calculated factorial for %d\n", num)
 }

@@ -15,6 +15,7 @@ func (app *application) routes() *mux.Router {
 	r.HandleFunc("/readyz", app.readyz).Name("readyz")
 	r.HandleFunc("/config/livezfailure", app.livezFailure).Name("livezFailure")
 	r.HandleFunc("/config/readyzfailure", app.readyzFailure).Name("readyzFailure")
+	r.HandleFunc("/factorial", app.factorial).Name("factorial")
 	r.Handle("/metrics", promhttp.Handler()).Name("metrics")
 	return r
 }
