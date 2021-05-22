@@ -14,6 +14,14 @@ func (app *application) hello(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "\nOur enviroment variable is: "+os.Getenv("FOO"))
 }
 
+func (app *application) ip(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "Pod IP: %s", os.Getenv("POD_IP"))
+}
+
+func (app *application) crash(w http.ResponseWriter, req *http.Request) {
+	app.errorLog.Fatalln("I'm tired of living in this cluster, gonna crash")
+}
+
 func (app *application) livez(w http.ResponseWriter, req *http.Request) {
 	status := http.StatusOK
 
