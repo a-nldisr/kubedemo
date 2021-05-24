@@ -6,7 +6,7 @@ metadata:
   labels:
     app: kubedemo
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: kubedemo
@@ -17,11 +17,29 @@ spec:
     spec:
       containers:
       - name: kubedemo
-        image: anldisr/kubedemo:0.0.3
+        image: anldisr/kubedemo:0.0.4
         ports:
           - containerPort: 8090
             protocol: TCP
             name: kubedemo
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: kubedemo
+          initialDelaySeconds: 3 # 0
+          periodSeconds: 2 # 10
+          timeoutSeconds: 2 # 1
+          successThreshold: 1 # 1
+          failureThreshold: 3 # 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: kubedemo
+          initialDelaySeconds: 5 # 0
+          periodSeconds: 2 # 10
+          timeoutSeconds: 2 # 1
+          successThreshold: 1 # 1
+          failureThreshold: 3 # 3
         resources:
           limits:
             cpu: "0.5"
@@ -30,6 +48,10 @@ spec:
             cpu: "0.2"
             memory: 64Mi
         env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
           - name: SECRET
             valueFrom:
               secretKeyRef:

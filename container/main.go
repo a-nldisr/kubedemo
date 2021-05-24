@@ -11,32 +11,21 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var someRandomMetric = prometheus.NewGauge(prometheus.GaugeOpts{
 	Name: "some_random_metric", Help: "A random static metric in your Kubernetes to play with"})
 
-func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Hello function")
-
-	fmt.Fprintf(w, "Hi Vandebron\n")
-	fmt.Fprintf(w, "Our sealed secret is: "+os.Getenv("SECRET"))
-	fmt.Fprintf(w, "\nOur enviroment variable is: "+os.Getenv("FOO"))
+type application struct {
+	readinessFailure bool
+	livenessFailure  bool
+	infoLog          *log.Logger
+	errorLog         *log.Logger
+	debugLog         *log.Logger
 }
 
-func headers(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("headers function")
-
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			fmt.Fprintf(w, "%v: %v\n", name, h)
-		}
-	}
-}
-
-func randomChannel(c chan bool) {
-	fmt.Println("Starting time based random metric generator")
+func (app *application) randomChannel(c chan bool) {
+	app.infoLog.Println("Starting time based random metric generator")
 
 	// Time in seconds
 	pollInterval := 10
@@ -47,15 +36,15 @@ func randomChannel(c chan bool) {
 		select {
 		// when shutdown is received we break
 		case <-c:
-			fmt.Println("Received shutdown, stopping timer")
+			app.infoLog.Println("Received shutdown, stopping timer")
 			break
 		default:
-			fmt.Println("Generating number... ")
+			app.debugLog.Println("Generating number... ")
 			min := 0
 			max := 10
 			num := float64(rand.Intn(max-min) + min)
 			s := fmt.Sprintf("%f", num)
-			fmt.Println("Generated random numer: " + string(s))
+			app.debugLog.Println("Generated random number: " + string(s))
 
 			someRandomMetric.Set(num)
 		}
@@ -69,23 +58,36 @@ func init() {
 }
 
 func main() {
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime|log.Lshortfile)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	debugLog := log.New(os.Stdout, "DEBUG\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	fmt.Println("Version 0.0.3")
+	app := &application{
+		readinessFailure: false,
+		livenessFailure:  false,
+		infoLog:          infoLog,
+		errorLog:         errorLog,
+		debugLog:         debugLog,
+	}
+
+	app.infoLog.Println("Version 0.0.4")
 
 	port := ":8090"
 
 	server := &http.Server{
 		Addr:         port,
+		ErrorLog:     app.errorLog,
+		Handler:      app.routes(),
+		IdleTimeout:  15 * time.Second,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  15 * time.Second,
 	}
 
-	fmt.Println("Starting server")
+	app.infoLog.Printf("Starting server on %v\n", port)
 
 	// Creating the channel in a go routine to ensure the timer runs concurrently in the background
 	notificationChannel := make(chan bool)
-	go randomChannel(notificationChannel)
+	go app.randomChannel(notificationChannel)
 
 	// Setting clean shutdown mechanisms
 	done := make(chan bool)
@@ -98,7 +100,7 @@ func main() {
 		// Send notification to close the time loop in childChan
 		notificationChannel <- true
 		// Notifying the server shutdown is received.
-		fmt.Println("Server is shutting down.")
+		app.infoLog.Println("Server is shutting down.")
 
 		// Setting up context group
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -106,20 +108,17 @@ func main() {
 
 		server.SetKeepAlivesEnabled(false)
 		if err := server.Shutdown(ctx); err != nil {
-			log.Fatalf("Could not gracefully shutdown the server: %v\n", err)
+			app.errorLog.Fatalf("Could not gracefully shutdown the server: %v\n", err)
 		}
 
 		// Closing channel
 		close(done)
 	}()
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/", hello)
-	http.HandleFunc("/headers", headers)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Could not listen on %s: %v\n", port, err)
+		app.errorLog.Fatalf("Could not listen on %s: %v\n", port, err)
 	} // Block till server is closed, send notification after
 	<-done
-	fmt.Println("Server stopped")
+	app.infoLog.Println("Server stopped")
 
 }

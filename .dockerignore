@@ -1,0 +1,4 @@
+*.md
+.vscode
+LICENSE
+kubernetes/
